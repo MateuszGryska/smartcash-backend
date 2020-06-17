@@ -1,7 +1,7 @@
-const uuid = require('uuid');
 const { validationResult } = require('express-validator');
 
 const HttpError = require('../models/http-error');
+const BudgetElement = require('../models/budget-element');
 
 let DUMMY_BUDGET_ELEMENT = [
   {
@@ -15,27 +15,44 @@ let DUMMY_BUDGET_ELEMENT = [
   },
 ];
 
-const getBudgetElementById = (req, res, next) => {
+const getBudgetElementById = async (req, res, next) => {
   const budgetElementId = req.params.bid;
-  const budgetElement = DUMMY_BUDGET_ELEMENT.find(({ id }) => {
-    return id === budgetElementId;
-  });
+
+  let budgetElement;
+  try {
+    budgetElement = await BudgetElement.findById(budgetElementId);
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, could not find a budget element.',
+      500
+    );
+    return next(error);
+  }
 
   if (!budgetElement) {
-    throw new HttpError(
+    const error = new HttpError(
       'Could not find a budget element for the provided id.',
       404
     );
+    return next(error);
   }
 
-  res.json({ budgetElement });
+  res.json({ budgetElement: budgetElement.toObject({ getters: true }) });
 };
 
-const getBudgetElementsByUserId = (req, res, next) => {
+const getBudgetElementsByUserId = async (req, res, next) => {
   const userId = req.params.uid;
-  const budgetElements = DUMMY_BUDGET_ELEMENT.filter(({ user }) => {
-    return user === userId;
-  });
+
+  let budgetElements;
+  try {
+    budgetElements = await BudgetElement.find({ user: userId });
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, could not find a budget elements by user ID.',
+      500
+    );
+    return next(error);
+  }
 
   if (!budgetElements || budgetElements.length === 0) {
     return next(
@@ -46,10 +63,14 @@ const getBudgetElementsByUserId = (req, res, next) => {
     );
   }
 
-  res.json({ budgetElements });
+  res.json({
+    budgetElements: budgetElements.map((budgetElement) =>
+      budgetElement.toObject({ getters: true })
+    ),
+  });
 };
 
-const createBudgetElement = (req, res, next) => {
+const createBudgetElement = async (req, res, next) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -57,21 +78,28 @@ const createBudgetElement = (req, res, next) => {
   }
 
   const { name, amount, wallet, category, user } = req.body;
-  const createdBudgetElement = {
-    id: uuid.v4(),
+  const createdBudgetElement = new BudgetElement({
     name,
     amount,
     wallet,
     category,
     user,
-  };
+  });
 
-  DUMMY_BUDGET_ELEMENT.push(createdBudgetElement);
+  try {
+    await createdBudgetElement.save();
+  } catch (err) {
+    const error = new HttpError(
+      'Creating budget element failed, please try again.',
+      500
+    );
+    return next(error);
+  }
 
   res.status(201).json({ budgetElement: createdBudgetElement });
 };
 
-const updateBudgetElement = (req, res, next) => {
+const updateBudgetElement = async (req, res, next) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -80,31 +108,52 @@ const updateBudgetElement = (req, res, next) => {
 
   const { name, amount, wallet, category } = req.body;
   const budgetElementId = req.params.bid;
-  const updatedBudgetElement = {
-    ...DUMMY_BUDGET_ELEMENT.find(({ id }) => id === budgetElementId),
-  };
-  const budgetElementIndex = DUMMY_BUDGET_ELEMENT.findIndex(
-    ({ id }) => id === budgetElementId
-  );
-  updatedBudgetElement.name = name;
-  updatedBudgetElement.amount = amount;
-  updatedBudgetElement.wallet = wallet;
-  updatedBudgetElement.category = category;
 
-  DUMMY_BUDGET_ELEMENT[budgetElementIndex] = updatedBudgetElement;
-
-  res.status(200).json({ budgetElement: updatedBudgetElement });
-};
-
-const deleteBudgetElement = (req, res, next) => {
-  const budgetElementId = req.params.bid;
-  if (!DUMMY_BUDGET_ELEMENT.find(({ id }) => id === budgetElementId)) {
-    throw new HttpError('Could not find a place for that id.', 404);
+  let budgetElement;
+  try {
+    budgetElement = await BudgetElement.findById(budgetElementId);
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
   }
 
-  DUMMY_BUDGET_ELEMENT = DUMMY_BUDGET_ELEMENT.filter(
-    ({ id }) => id !== budgetElementId
-  );
+  budgetElement.name = name;
+  budgetElement.amount = amount;
+  budgetElement.wallet = wallet;
+  budgetElement.category = category;
+
+  try {
+    await budgetElement.save();
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+
+  res
+    .status(200)
+    .json({ budgetElement: budgetElement.toObject({ getters: true }) });
+};
+
+const deleteBudgetElement = async (req, res, next) => {
+  const budgetElementId = req.params.bid;
+
+  let budgetElement;
+  try {
+    budgetElement = await BudgetElement.findById(budgetElementId);
+    budgetElement.remove();
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try delete element again.',
+      500
+    );
+    return next(error);
+  }
 
   res.status(200).json({ message: 'Deleted budget element!' });
 };
