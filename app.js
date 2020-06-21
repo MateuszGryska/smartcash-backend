@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 
 const budgetRoutes = require('./routes/budget-routes');
+const categoryRoutes = require('./routes/category-routes');
+const walletRoutes = require('./routes/wallet-routes');
 const userRoutes = require('./routes/users-routes');
 const HttpError = require('./models/http-error');
 
@@ -11,6 +13,8 @@ const app = express();
 app.use(bodyParser.json());
 
 app.use('/api/budget', budgetRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/wallets', walletRoutes);
 app.use('/api/users', userRoutes);
 
 app.use((req, res, next) => {

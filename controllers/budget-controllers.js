@@ -1,19 +1,11 @@
 const { validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 
 const HttpError = require('../models/http-error');
 const BudgetElement = require('../models/budget-element');
-
-let DUMMY_BUDGET_ELEMENT = [
-  {
-    id: 'b1',
-    name: 'Pomidory',
-    amount: 2000,
-    date: '18.11.2012',
-    wallet: '001',
-    category: 'c02',
-    user: 'u1',
-  },
-];
+const User = require('../models/user');
+const Category = require('../models/category');
+const Wallet = require('../models/wallet');
 
 const getBudgetElementById = async (req, res, next) => {
   const budgetElementId = req.params.bid;
@@ -74,26 +66,62 @@ const createBudgetElement = async (req, res, next) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
-    throw new HttpError('Invalid input passed, please check your data', 422);
+    return next(
+      new HttpError('Invalid input passed, please check your data', 422)
+    );
   }
 
   const { name, amount, wallet, category, user } = req.body;
   const createdBudgetElement = new BudgetElement({
     name,
     amount,
+    type,
     wallet,
     category,
     user,
   });
 
+  let userId;
+  let categoryId;
+  let walletId;
   try {
-    await createdBudgetElement.save();
+    userId = await User.findById(user);
+    categoryId = await Category.findById(category);
+    walletId = await Wallet.findById(wallet);
   } catch (err) {
-    const error = new HttpError(
-      'Creating budget element failed, please try again.',
-      500
+    return next(
+      new HttpError('Creating budget element failed, please try again.', 500)
     );
-    return next(error);
+  }
+
+  if (!userId) {
+    return next(new HttpError('Could not find user for provided id.', 404));
+  }
+  if (!categoryId) {
+    return next(new HttpError('Could not find category for provided id.', 404));
+  }
+  if (!walletId) {
+    return next(new HttpError('Could not find wallet for provided id.', 404));
+  }
+
+  try {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    await createdBudgetElement.save({ session: session });
+    userId.budgetElements.push(createdBudgetElement);
+    await userId.save({ session: session });
+    categoryId.budgetElements.push(createdBudgetElement);
+    await categoryId.save({ session: session });
+    walletId.budgetElements.push(createdBudgetElement);
+    await walletId.save({ session: session });
+    await session.commitTransaction();
+  } catch (err) {
+    return next(
+      new HttpError(
+        'Creating new budget element failedd, please try again.',
+        500
+      )
+    );
   }
 
   res.status(201).json({ budgetElement: createdBudgetElement });
@@ -106,7 +134,7 @@ const updateBudgetElement = async (req, res, next) => {
     throw new HttpError('Invalid input passed, please check your data', 422);
   }
 
-  const { name, amount, wallet, category } = req.body;
+  const { name, amount, type, wallet, category } = req.body;
   const budgetElementId = req.params.bid;
 
   let budgetElement;
@@ -124,6 +152,7 @@ const updateBudgetElement = async (req, res, next) => {
   budgetElement.amount = amount;
   budgetElement.wallet = wallet;
   budgetElement.category = category;
+  budgetElement.type = type;
 
   try {
     await budgetElement.save();
@@ -145,14 +174,42 @@ const deleteBudgetElement = async (req, res, next) => {
 
   let budgetElement;
   try {
-    budgetElement = await BudgetElement.findById(budgetElementId);
-    budgetElement.remove();
+    budgetElement = await BudgetElement.findById(budgetElementId)
+      .populate('user')
+      .populate('category')
+      .populate('wallet');
   } catch (err) {
     const error = new HttpError(
       'Something went wrong, please try delete element again.',
       500
     );
     return next(error);
+  }
+
+  if (!budgetElement) {
+    return next(
+      new HttpError('Something went wrong, could not delete budget element!')
+    );
+  }
+  console.log(budgetElement);
+  try {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    await budgetElement.remove({ session: session });
+    budgetElement.user.budgetElements.pull(budgetElement);
+    await budgetElement.user.save({ session: session });
+    budgetElement.category.budgetElements.pull(budgetElement);
+    await budgetElement.category.save({ session: session });
+    budgetElement.wallet.budgetElements.pull(budgetElement);
+    await budgetElement.wallet.save({ session: session });
+    await session.commitTransaction();
+  } catch (err) {
+    return next(
+      new HttpError(
+        'Something went wrong, please try delete element again.',
+        500
+      )
+    );
   }
 
   res.status(200).json({ message: 'Deleted budget element!' });
