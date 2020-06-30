@@ -12,7 +12,18 @@ const app = express();
 
 app.use(bodyParser.json());
 
-app.use('/api/budget', budgetRoutes);
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Author, Authorization'
+  );
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
+
+  next();
+});
+
+app.use('/api/budgetelements', budgetRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/wallets', walletRoutes);
 app.use('/api/users', userRoutes);

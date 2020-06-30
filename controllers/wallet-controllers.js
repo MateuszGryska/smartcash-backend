@@ -64,12 +64,12 @@ const createWallet = async (req, res, next) => {
     );
   }
 
-  const { name, user } = req.body;
+  const { name, user, sum } = req.body;
   const createdWallet = new Wallet({
     name,
     budgetElements: [],
     user,
-    sum: 0,
+    sum,
   });
 
   let userId;
@@ -98,7 +98,7 @@ const createWallet = async (req, res, next) => {
     );
   }
 
-  res.status(201).json({ wallet: createdWallet });
+  res.status(201).json({ wallets: createdWallet });
 };
 
 const updateWallet = async (req, res, next) => {
@@ -134,7 +134,7 @@ const updateWallet = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(200).json({ wallet: wallet.toObject({ getters: true }) });
+  res.status(200).json({ wallets: wallet.toObject({ getters: true }) });
 };
 
 const deleteWallet = async (req, res, next) => {
@@ -157,7 +157,13 @@ const deleteWallet = async (req, res, next) => {
     );
   }
 
-  console.log(wallet);
+  if (wallet.budgetElements.length > 0) {
+    return next(
+      new HttpError(
+        'Before you delete wallet, you must delete budget elements!'
+      )
+    );
+  }
 
   try {
     const session = await mongoose.startSession();

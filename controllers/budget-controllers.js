@@ -71,7 +71,7 @@ const createBudgetElement = async (req, res, next) => {
     );
   }
 
-  const { name, amount, wallet, category, user } = req.body;
+  const { name, amount, wallet, category, user, type } = req.body;
   const createdBudgetElement = new BudgetElement({
     name,
     amount,
@@ -124,7 +124,7 @@ const createBudgetElement = async (req, res, next) => {
     );
   }
 
-  res.status(201).json({ budgetElement: createdBudgetElement });
+  res.status(201).json({ budgetElements: createdBudgetElement });
 };
 
 const updateBudgetElement = async (req, res, next) => {
@@ -166,7 +166,7 @@ const updateBudgetElement = async (req, res, next) => {
 
   res
     .status(200)
-    .json({ budgetElement: budgetElement.toObject({ getters: true }) });
+    .json({ budgetElements: budgetElement.toObject({ getters: true }) });
 };
 
 const deleteBudgetElement = async (req, res, next) => {
@@ -191,7 +191,7 @@ const deleteBudgetElement = async (req, res, next) => {
       new HttpError('Something went wrong, could not delete budget element!')
     );
   }
-  console.log(budgetElement);
+
   try {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -206,7 +206,7 @@ const deleteBudgetElement = async (req, res, next) => {
   } catch (err) {
     return next(
       new HttpError(
-        'Something went wrong, please try delete element again.',
+        `'Something went wrong, pleasee try delete element again.' ${err}`,
         500
       )
     );
