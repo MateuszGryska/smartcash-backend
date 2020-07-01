@@ -123,6 +123,7 @@ const updateWallet = async (req, res, next) => {
   }
 
   wallet.name = name;
+  wallet.date = Date.now();
 
   try {
     await wallet.save();
