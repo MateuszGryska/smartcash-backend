@@ -153,7 +153,7 @@ const updateCategory = async (req, res, next) => {
   }
 
   category.name = name;
-  category.date = Data.now();
+  category.date = Date.now();
 
   try {
     await category.save();

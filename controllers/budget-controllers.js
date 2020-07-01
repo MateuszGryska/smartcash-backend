@@ -104,6 +104,8 @@ const createBudgetElement = async (req, res, next) => {
     return next(new HttpError('Could not find wallet for provided id.', 404));
   }
 
+  categoryId.date = Date.now();
+
   try {
     const session = await mongoose.startSession();
     session.startTransaction();
