@@ -11,6 +11,7 @@ const getBudgetElementById = async (req, res, next) => {
   const budgetElementId = req.params.bid;
 
   let budgetElement;
+
   try {
     budgetElement = await BudgetElement.findById(budgetElementId);
   } catch (err) {
