@@ -16,6 +16,7 @@ const userSchema = new Schema({
     { type: mongoose.Types.ObjectId, required: true, ref: 'Category' },
   ],
   wallets: [{ type: mongoose.Types.ObjectId, required: true, ref: 'Wallet' }],
+  image: { type: String },
 });
 
 userSchema.plugin(uniqueValidator);

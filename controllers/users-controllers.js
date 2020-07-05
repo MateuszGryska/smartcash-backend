@@ -80,6 +80,7 @@ const signUp = async (req, res, next) => {
     country: 'Add country!',
     budgetElements: [],
     categories: [],
+    image: '',
   });
 
   try {
@@ -112,7 +113,76 @@ const login = async (req, res, next) => {
   res.json({ message: 'logged in!' });
 };
 
+const updateUserAvatar = async (req, res, next) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    throw new HttpError('Invalid input passed, please check your data', 422);
+  }
+
+  const userId = req.params.uid;
+
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+
+  user.image = req.file.path;
+  // user.date = Date.now();
+
+  try {
+    await user.save();
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+
+  res.status(200).json({ image: user.image });
+};
+
+const updateUserData = async (req, res, next) => {
+  // const errors = validationResult(req);
+  // if (!errors.isEmpty()) {
+  //   throw new HttpError('Invalid input passed, please check your data', 422);
+  // }
+  // const { name } = req.body;
+  // const categoryId = req.params.cid;
+  // let category;
+  // try {
+  //   category = await Category.findById(categoryId);
+  // } catch (err) {
+  //   const error = new HttpError(
+  //     'Something went wrong, please try update again.',
+  //     500
+  //   );
+  //   return next(error);
+  // }
+  // category.name = name;
+  // category.date = Date.now();
+  // try {
+  //   await category.save();
+  // } catch (err) {
+  //   const error = new HttpError(
+  //     'Something went wrong, please try update again.',
+  //     500
+  //   );
+  //   return next(error);
+  // }
+  // res.status(200).json({ categories: category.toObject({ getters: true }) });
+};
+
 exports.getUsers = getUsers;
 exports.getUserById = getUserById;
 exports.login = login;
 exports.signUp = signUp;
+exports.updateUserAvatar = updateUserAvatar;
+exports.updateUserData = updateUserData;

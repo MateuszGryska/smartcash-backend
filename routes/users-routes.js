@@ -1,5 +1,6 @@
 const express = require('express');
 const { check } = require('express-validator');
+const fileUpload = require('../middleware/file-upload');
 
 const usersControllers = require('../controllers/users-controllers');
 
@@ -22,6 +23,12 @@ router.post(
 
 router.post('/login', usersControllers.login);
 
-// router.patch('/:uid', usersControllers.updateUserData);
+router.patch('/:uid', usersControllers.updateUserData);
+
+router.patch(
+  '/image/:uid',
+  fileUpload.single('image'),
+  usersControllers.updateUserAvatar
+);
 
 module.exports = router;
