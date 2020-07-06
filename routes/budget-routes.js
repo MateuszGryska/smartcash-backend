@@ -2,8 +2,11 @@ const { Router } = require('express');
 const { check } = require('express-validator');
 
 const budgetControllers = require('../controllers/budget-controllers');
+const checkAuth = require('../middleware/check-auth');
 
 const router = Router();
+
+router.use(checkAuth);
 
 router.get('/:bid', budgetControllers.getBudgetElementById);
 
