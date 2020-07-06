@@ -72,21 +72,21 @@ const createBudgetElement = async (req, res, next) => {
     );
   }
 
-  const { name, amount, wallet, category, user, type } = req.body;
+  const { name, amount, wallet, category, type } = req.body;
   const createdBudgetElement = new BudgetElement({
     name,
     amount,
     type,
     wallet,
     category,
-    user,
+    user: req.userData.userId,
   });
 
   let userId;
   let categoryId;
   let walletId;
   try {
-    userId = await User.findById(user);
+    userId = await User.findById(req.userData.userId);
     categoryId = await Category.findById(category);
     walletId = await Wallet.findById(wallet);
   } catch (err) {

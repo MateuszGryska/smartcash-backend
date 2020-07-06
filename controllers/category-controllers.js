@@ -93,18 +93,18 @@ const createCategory = async (req, res, next) => {
     );
   }
 
-  const { name, user, type } = req.body;
+  const { name, type } = req.body;
   const createdCategory = new Category({
     name,
     type,
     budgetElements: [],
-    user,
+    user: req.userData.userId,
     sum: 0,
   });
 
   let userId;
   try {
-    userId = await User.findById(user);
+    userId = await User.findById(req.userData.userId);
   } catch (err) {
     return next(
       new HttpError('Creating category failed, please try again.', 500)

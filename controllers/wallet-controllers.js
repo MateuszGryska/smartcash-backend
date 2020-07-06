@@ -64,17 +64,17 @@ const createWallet = async (req, res, next) => {
     );
   }
 
-  const { name, user, sum } = req.body;
+  const { name, sum } = req.body;
   const createdWallet = new Wallet({
     name,
     budgetElements: [],
-    user,
+    user: req.userData.userId,
     sum,
   });
 
   let userId;
   try {
-    userId = await User.findById(user);
+    userId = await User.findById(req.userData.userId);
   } catch (err) {
     return next(
       new HttpError('Creating wallet failed, please try again.', 500)
