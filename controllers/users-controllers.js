@@ -207,34 +207,40 @@ const updateUserAvatar = async (req, res, next) => {
 };
 
 const updateUserData = async (req, res, next) => {
-  // const errors = validationResult(req);
-  // if (!errors.isEmpty()) {
-  //   throw new HttpError('Invalid input passed, please check your data', 422);
-  // }
-  // const { name } = req.body;
-  // const categoryId = req.params.cid;
-  // let category;
-  // try {
-  //   category = await Category.findById(categoryId);
-  // } catch (err) {
-  //   const error = new HttpError(
-  //     'Something went wrong, please try update again.',
-  //     500
-  //   );
-  //   return next(error);
-  // }
-  // category.name = name;
-  // category.date = Date.now();
-  // try {
-  //   await category.save();
-  // } catch (err) {
-  //   const error = new HttpError(
-  //     'Something went wrong, please try update again.',
-  //     500
-  //   );
-  //   return next(error);
-  // }
-  // res.status(200).json({ categories: category.toObject({ getters: true }) });
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new HttpError('Invalid input passed, please check your data', 422);
+  }
+
+  const { firstName, lastName, email, phoneNumber, country } = req.body;
+  const userId = req.params.uid;
+
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+  user.firstName = firstName;
+  user.lastName = lastName;
+  user.email = email;
+  user.phoneNumber = phoneNumber;
+  user.country = country;
+
+  try {
+    await user.save();
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+  res.status(200).json({ users: user.toObject({ getters: true }) });
 };
 
 exports.getUsers = getUsers;
