@@ -50,7 +50,7 @@ const getCategoriesByUserId = async (req, res, next) => {
     ]);
   } catch (err) {
     const error = new HttpError(
-      'Something went wrong, could not find a categories by user ID.',
+      'Something went wrong, could not find a categories by user.',
       500
     );
     return next(error);
@@ -58,10 +58,7 @@ const getCategoriesByUserId = async (req, res, next) => {
 
   if (!categories || categories.length === 0) {
     return next(
-      new HttpError(
-        'Could not find a categories for the provided user id.',
-        404
-      )
+      new HttpError('Could not find a categories for the provided user.', 404)
     );
   }
 
@@ -124,7 +121,7 @@ const createCategory = async (req, res, next) => {
     await sess.commitTransaction();
   } catch (err) {
     return next(
-      new HttpError('Creating new category failed, please try again.', 500)
+      new HttpError('Creating category failed, please try again.', 500)
     );
   }
 

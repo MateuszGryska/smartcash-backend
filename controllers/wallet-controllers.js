@@ -38,7 +38,7 @@ const getWalletsByUserId = async (req, res, next) => {
     wallets = await Wallet.find({ user: userId });
   } catch (err) {
     const error = new HttpError(
-      'Something went wrong, could not find a wallets by user ID.',
+      'Something went wrong, could not find a wallets by user.',
       500
     );
     return next(error);
@@ -46,7 +46,7 @@ const getWalletsByUserId = async (req, res, next) => {
 
   if (!wallets || wallets.length === 0) {
     return next(
-      new HttpError('Could not find a wallets for the provided user id.', 404)
+      new HttpError('Could not find a wallets for the provided user.', 404)
     );
   }
 

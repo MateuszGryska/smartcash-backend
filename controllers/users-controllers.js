@@ -66,7 +66,7 @@ const signUp = async (req, res, next) => {
 
   if (existingUser) {
     const error = new HttpError(
-      'User exists already, please login instead.',
+      'User already exists, please login instead.',
       422
     );
     return next(error);
@@ -76,7 +76,9 @@ const signUp = async (req, res, next) => {
   try {
     hashedPassword = await bcrypt.hash(password, 12);
   } catch (err) {
-    return next(new HttpError('Could not create user, please try again.', 422));
+    return next(
+      new HttpError('Could not create a user, please try again.', 422)
+    );
   }
 
   const createdNewUser = new User({
@@ -130,7 +132,7 @@ const login = async (req, res, next) => {
 
   if (!existingUser) {
     return next(
-      new HttpError('Invalid credentials, could not log you in!', 403)
+      new HttpError('Invalid email or password, could not log you in!', 403)
     );
   }
 
@@ -140,7 +142,7 @@ const login = async (req, res, next) => {
   } catch (err) {
     return next(
       new HttpError(
-        'Could not log you in, please check your credentials and try again.',
+        'Could not log you in, please check your email and password and try again.',
         500
       )
     );
@@ -148,7 +150,7 @@ const login = async (req, res, next) => {
 
   if (!isValidPassword) {
     return next(
-      new HttpError('Invalid credentials, could not log you in.', 403)
+      new HttpError('Invalid email or password, could not log you in.', 403)
     );
   }
 

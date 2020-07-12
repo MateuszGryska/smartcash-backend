@@ -41,7 +41,7 @@ const getBudgetElementsByUserId = async (req, res, next) => {
     budgetElements = await BudgetElement.find({ user: userId });
   } catch (err) {
     const error = new HttpError(
-      'Something went wrong, could not find a budget elements by user ID.',
+      'Something went wrong, could not find a budget elements by user.',
       500
     );
     return next(error);
@@ -50,7 +50,7 @@ const getBudgetElementsByUserId = async (req, res, next) => {
   if (!budgetElements || budgetElements.length === 0) {
     return next(
       new HttpError(
-        'Could not find a budget element for the provided user id.',
+        'Could not find a budget element for the provided user.',
         404
       )
     );
