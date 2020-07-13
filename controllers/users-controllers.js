@@ -1,5 +1,6 @@
-const uuid = require('uuid');
 const { validationResult } = require('express-validator');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const HttpError = require('../models/http-error');
 const User = require('../models/user');
@@ -17,6 +18,31 @@ const getUsers = async (req, res, next) => {
   res
     .status(200)
     .json({ users: users.map((user) => user.toObject({ getters: true })) });
+};
+
+const getUserById = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, could not find a user.',
+      500
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError(
+      'Could not find a user for the provided id.',
+      404
+    );
+    return next(error);
+  }
+
+  res.json({ user: user.toObject({ getters: true }) });
 };
 
 const signUp = async (req, res, next) => {
@@ -40,21 +66,31 @@ const signUp = async (req, res, next) => {
 
   if (existingUser) {
     const error = new HttpError(
-      'User exists already, please login instead.',
+      'User already exists, please login instead.',
       422
     );
     return next(error);
+  }
+
+  let hashedPassword;
+  try {
+    hashedPassword = await bcrypt.hash(password, 12);
+  } catch (err) {
+    return next(
+      new HttpError('Could not create a user, please try again.', 422)
+    );
   }
 
   const createdNewUser = new User({
     firstName,
     lastName,
     email,
-    password,
+    password: hashedPassword,
     phoneNumber: 0,
     country: 'Add country!',
     budgetElements: [],
     categories: [],
+    image: '',
   });
 
   try {
@@ -64,7 +100,23 @@ const signUp = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(201).json({ user: createdNewUser.toObject({ getters: true }) });
+  let token;
+  try {
+    token = jwt.sign(
+      { userId: createdNewUser.id, email: createdNewUser.email },
+      process.env.JWT_KEY,
+      { expiresIn: '1h' }
+    );
+  } catch (err) {
+    const error = new HttpError('Signing up failed, please try again.', 500);
+    return next(error);
+  }
+
+  res.status(201).json({
+    userId: createdNewUser.id,
+    email: createdNewUser.email,
+    token: token,
+  });
 };
 
 const login = async (req, res, next) => {
@@ -72,21 +124,130 @@ const login = async (req, res, next) => {
 
   let existingUser;
   try {
-    existingUser = await User.findOne({ email: email });
+    existingUser = await User.findOne({ email });
   } catch (err) {
-    const error = new HttpError('Sign up failed, please try again later.', 500);
+    const error = new HttpError('Sign in failed, please try again later.', 500);
     return next(error);
   }
 
-  if (!existingUser || existingUser.password !== password) {
+  if (!existingUser) {
     return next(
-      new HttpError('Invalid credentials, could not log you in!', 401)
+      new HttpError('Invalid email or password, could not log you in!', 403)
     );
   }
 
-  res.json({ message: 'logged in!' });
+  let isValidPassword = false;
+  try {
+    isValidPassword = await bcrypt.compare(password, existingUser.password);
+  } catch (err) {
+    return next(
+      new HttpError(
+        'Could not log you in, please check your email and password and try again.',
+        500
+      )
+    );
+  }
+
+  if (!isValidPassword) {
+    return next(
+      new HttpError('Invalid email or password, could not log you in.', 403)
+    );
+  }
+
+  let token;
+  try {
+    token = jwt.sign(
+      { userId: existingUser.id, email: existingUser.email },
+      process.env.JWT_KEY,
+      { expiresIn: '1h' }
+    );
+  } catch (err) {
+    const error = new HttpError('Sign in failed, please try again later.', 500);
+    return next(error);
+  }
+
+  res.json({
+    userId: existingUser.id,
+    email: existingUser.email,
+    token: token,
+  });
+};
+
+const updateUserAvatar = async (req, res, next) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    throw new HttpError('Invalid input passed, please check your data', 422);
+  }
+
+  const userId = req.params.uid;
+
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+
+  user.image = req.file.path;
+
+  try {
+    await user.save();
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+
+  res.status(200).json({ image: user.image });
+};
+
+const updateUserData = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new HttpError('Invalid input passed, please check your data', 422);
+  }
+
+  const { firstName, lastName, email, phoneNumber, country } = req.body;
+  const userId = req.params.uid;
+
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+  user.firstName = firstName;
+  user.lastName = lastName;
+  user.email = email;
+  user.phoneNumber = phoneNumber;
+  user.country = country;
+
+  try {
+    await user.save();
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+  res.status(200).json({ users: user.toObject({ getters: true }) });
 };
 
 exports.getUsers = getUsers;
+exports.getUserById = getUserById;
 exports.login = login;
 exports.signUp = signUp;
+exports.updateUserAvatar = updateUserAvatar;
+exports.updateUserData = updateUserData;

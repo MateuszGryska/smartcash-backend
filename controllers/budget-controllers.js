@@ -11,6 +11,7 @@ const getBudgetElementById = async (req, res, next) => {
   const budgetElementId = req.params.bid;
 
   let budgetElement;
+
   try {
     budgetElement = await BudgetElement.findById(budgetElementId);
   } catch (err) {
@@ -40,7 +41,7 @@ const getBudgetElementsByUserId = async (req, res, next) => {
     budgetElements = await BudgetElement.find({ user: userId });
   } catch (err) {
     const error = new HttpError(
-      'Something went wrong, could not find a budget elements by user ID.',
+      'Something went wrong, could not find a budget elements by user.',
       500
     );
     return next(error);
@@ -49,7 +50,7 @@ const getBudgetElementsByUserId = async (req, res, next) => {
   if (!budgetElements || budgetElements.length === 0) {
     return next(
       new HttpError(
-        'Could not find a budget element for the provided user id.',
+        'Could not find a budget element for the provided user.',
         404
       )
     );
@@ -71,21 +72,21 @@ const createBudgetElement = async (req, res, next) => {
     );
   }
 
-  const { name, amount, wallet, category, user } = req.body;
+  const { name, amount, wallet, category, type } = req.body;
   const createdBudgetElement = new BudgetElement({
     name,
     amount,
     type,
     wallet,
     category,
-    user,
+    user: req.userData.userId,
   });
 
   let userId;
   let categoryId;
   let walletId;
   try {
-    userId = await User.findById(user);
+    userId = await User.findById(req.userData.userId);
     categoryId = await Category.findById(category);
     walletId = await Wallet.findById(wallet);
   } catch (err) {
@@ -103,6 +104,8 @@ const createBudgetElement = async (req, res, next) => {
   if (!walletId) {
     return next(new HttpError('Could not find wallet for provided id.', 404));
   }
+
+  categoryId.date = Date.now();
 
   try {
     const session = await mongoose.startSession();
@@ -124,7 +127,7 @@ const createBudgetElement = async (req, res, next) => {
     );
   }
 
-  res.status(201).json({ budgetElement: createdBudgetElement });
+  res.status(201).json({ budgetElements: createdBudgetElement });
 };
 
 const updateBudgetElement = async (req, res, next) => {
@@ -166,7 +169,7 @@ const updateBudgetElement = async (req, res, next) => {
 
   res
     .status(200)
-    .json({ budgetElement: budgetElement.toObject({ getters: true }) });
+    .json({ budgetElements: budgetElement.toObject({ getters: true }) });
 };
 
 const deleteBudgetElement = async (req, res, next) => {
@@ -191,7 +194,7 @@ const deleteBudgetElement = async (req, res, next) => {
       new HttpError('Something went wrong, could not delete budget element!')
     );
   }
-  console.log(budgetElement);
+
   try {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -206,7 +209,7 @@ const deleteBudgetElement = async (req, res, next) => {
   } catch (err) {
     return next(
       new HttpError(
-        'Something went wrong, please try delete element again.',
+        `'Something went wrong, pleasee try delete element again.' ${err}`,
         500
       )
     );

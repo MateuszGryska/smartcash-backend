@@ -38,7 +38,7 @@ const getWalletsByUserId = async (req, res, next) => {
     wallets = await Wallet.find({ user: userId });
   } catch (err) {
     const error = new HttpError(
-      'Something went wrong, could not find a wallets by user ID.',
+      'Something went wrong, could not find a wallets by user.',
       500
     );
     return next(error);
@@ -46,7 +46,7 @@ const getWalletsByUserId = async (req, res, next) => {
 
   if (!wallets || wallets.length === 0) {
     return next(
-      new HttpError('Could not find a wallets for the provided user id.', 404)
+      new HttpError('Could not find a wallets for the provided user.', 404)
     );
   }
 
@@ -64,17 +64,17 @@ const createWallet = async (req, res, next) => {
     );
   }
 
-  const { name, user } = req.body;
+  const { name, sum } = req.body;
   const createdWallet = new Wallet({
     name,
     budgetElements: [],
-    user,
-    sum: 0,
+    user: req.userData.userId,
+    sum,
   });
 
   let userId;
   try {
-    userId = await User.findById(user);
+    userId = await User.findById(req.userData.userId);
   } catch (err) {
     return next(
       new HttpError('Creating wallet failed, please try again.', 500)
@@ -98,7 +98,7 @@ const createWallet = async (req, res, next) => {
     );
   }
 
-  res.status(201).json({ wallet: createdWallet });
+  res.status(201).json({ wallets: createdWallet });
 };
 
 const updateWallet = async (req, res, next) => {
@@ -123,6 +123,7 @@ const updateWallet = async (req, res, next) => {
   }
 
   wallet.name = name;
+  wallet.date = Date.now();
 
   try {
     await wallet.save();
@@ -134,7 +135,7 @@ const updateWallet = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(200).json({ wallet: wallet.toObject({ getters: true }) });
+  res.status(200).json({ wallets: wallet.toObject({ getters: true }) });
 };
 
 const deleteWallet = async (req, res, next) => {
@@ -157,7 +158,13 @@ const deleteWallet = async (req, res, next) => {
     );
   }
 
-  console.log(wallet);
+  if (wallet.budgetElements.length > 0) {
+    return next(
+      new HttpError(
+        'Before you delete wallet, you must delete budget elements!'
+      )
+    );
+  }
 
   try {
     const session = await mongoose.startSession();

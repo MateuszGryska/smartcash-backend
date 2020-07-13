@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const HttpError = require('../models/http-error');
 const Category = require('../models/category');
+const BudgetElement = require('../models/budget-element');
 const User = require('../models/user');
 
 const getCategoryById = async (req, res, next) => {
@@ -34,11 +35,22 @@ const getCategoriesByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
   let categories;
+  let filteredCategories;
   try {
     categories = await Category.find({ user: userId });
+    filteredCategories = await BudgetElement.aggregate([
+      {
+        $group: {
+          _id: '$category',
+          total: {
+            $sum: '$amount',
+          },
+        },
+      },
+    ]);
   } catch (err) {
     const error = new HttpError(
-      'Something went wrong, could not find a categories by user ID.',
+      'Something went wrong, could not find a categories by user.',
       500
     );
     return next(error);
@@ -46,12 +58,21 @@ const getCategoriesByUserId = async (req, res, next) => {
 
   if (!categories || categories.length === 0) {
     return next(
-      new HttpError(
-        'Could not find a categories for the provided user id.',
-        404
-      )
+      new HttpError('Could not find a categories for the provided user.', 404)
     );
   }
+
+  //update category sum value
+  categories.forEach((category) => {
+    if (category.budgetElements.length > 0) {
+      const catId = category._id.toString();
+      const categoryToUpdate = filteredCategories.find((cur) => {
+        return cur._id == catId;
+      });
+      category.sum = categoryToUpdate.total;
+    }
+    return;
+  });
 
   res.json({
     categories: categories.map((category) =>
@@ -69,17 +90,18 @@ const createCategory = async (req, res, next) => {
     );
   }
 
-  const { name, user } = req.body;
+  const { name, type } = req.body;
   const createdCategory = new Category({
     name,
+    type,
     budgetElements: [],
-    user,
+    user: req.userData.userId,
     sum: 0,
   });
 
   let userId;
   try {
-    userId = await User.findById(user);
+    userId = await User.findById(req.userData.userId);
   } catch (err) {
     return next(
       new HttpError('Creating category failed, please try again.', 500)
@@ -99,11 +121,11 @@ const createCategory = async (req, res, next) => {
     await sess.commitTransaction();
   } catch (err) {
     return next(
-      new HttpError('Creating new category failed, please try again.', 500)
+      new HttpError('Creating category failed, please try again.', 500)
     );
   }
 
-  res.status(201).json({ category: createdCategory });
+  res.status(201).json({ categories: createdCategory });
 };
 
 const updateCategory = async (req, res, next) => {
@@ -128,6 +150,7 @@ const updateCategory = async (req, res, next) => {
   }
 
   category.name = name;
+  category.date = Date.now();
 
   try {
     await category.save();
@@ -139,7 +162,7 @@ const updateCategory = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(200).json({ category: category.toObject({ getters: true }) });
+  res.status(200).json({ categories: category.toObject({ getters: true }) });
 };
 
 const deleteCategory = async (req, res, next) => {
@@ -162,7 +185,13 @@ const deleteCategory = async (req, res, next) => {
     );
   }
 
-  console.log(category);
+  if (category.budgetElements.length > 0) {
+    return next(
+      new HttpError(
+        'Before you delete category, you must delete budget elements!'
+      )
+    );
+  }
 
   try {
     const session = await mongoose.startSession();

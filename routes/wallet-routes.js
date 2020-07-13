@@ -2,8 +2,11 @@ const { Router } = require('express');
 const { check } = require('express-validator');
 
 const walletControllers = require('../controllers/wallet-controllers');
+const checkAuth = require('../middleware/check-auth');
 
 const router = Router();
+
+router.use(checkAuth);
 
 router.get('/:wid', walletControllers.getWalletById);
 

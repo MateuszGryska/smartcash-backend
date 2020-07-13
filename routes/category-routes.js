@@ -2,8 +2,11 @@ const { Router } = require('express');
 const { check } = require('express-validator');
 
 const categoryControllers = require('../controllers/category-controllers');
+const checkAuth = require('../middleware/check-auth');
 
 const router = Router();
+
+router.use(checkAuth);
 
 router.get('/:cid', categoryControllers.getCategoryById);
 
