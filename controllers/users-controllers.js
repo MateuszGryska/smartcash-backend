@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 
 const HttpError = require('../models/http-error');
 const User = require('../models/user');
@@ -245,9 +246,56 @@ const updateUserData = async (req, res, next) => {
   res.status(200).json({ users: user.toObject({ getters: true }) });
 };
 
+const deleteUser = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  let user;
+  try {
+    user = await User.findById(userId).populate('user');
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try delete user again.',
+      500
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    return next(new HttpError('Something went wrong, could not delete user!'));
+  }
+
+  if (user.budgetElements.length > 0) {
+    return next(
+      new HttpError('Before you delete user, you must delete budget elements!')
+    );
+  } else if (user.categories.length > 0) {
+    return next(
+      new HttpError('Before you delete user, you must delete categories!')
+    );
+  } else if (user.wallets.length > 0) {
+    return next(
+      new HttpError('Before you delete user, you must delete wallets!')
+    );
+  }
+
+  try {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    await user.remove({ session: session });
+    await session.commitTransaction();
+  } catch (err) {
+    return next(
+      new HttpError(`Something went wrong, please try deletee user again.`, 500)
+    );
+  }
+
+  res.status(200).json({ message: 'Deleted user!' });
+};
+
 exports.getUsers = getUsers;
 exports.getUserById = getUserById;
 exports.login = login;
 exports.signUp = signUp;
 exports.updateUserAvatar = updateUserAvatar;
 exports.updateUserData = updateUserData;
+exports.deleteUser = deleteUser;

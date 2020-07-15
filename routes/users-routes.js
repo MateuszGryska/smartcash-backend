@@ -31,4 +31,6 @@ router.patch(
   usersControllers.updateUserAvatar
 );
 
+router.delete('/:uid', usersControllers.deleteUser);
+
 module.exports = router;
