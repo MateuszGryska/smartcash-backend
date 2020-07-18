@@ -5,6 +5,9 @@ const mongoose = require('mongoose');
 
 const HttpError = require('../models/http-error');
 const User = require('../models/user');
+const Category = require('../models/category');
+const BudgetElement = require('../models/budget-element');
+const Wallet = require('../models/wallet');
 
 const getUsers = async (req, res, next) => {
   let users;
@@ -251,7 +254,7 @@ const deleteUser = async (req, res, next) => {
 
   let user;
   try {
-    user = await User.findById(userId).populate('user');
+    user = await User.findById(userId).populate('categories');
   } catch (err) {
     const error = new HttpError(
       'Something went wrong, please try delete user again.',
@@ -264,28 +267,20 @@ const deleteUser = async (req, res, next) => {
     return next(new HttpError('Something went wrong, could not delete user!'));
   }
 
-  if (user.budgetElements.length > 0) {
-    return next(
-      new HttpError('Before you delete user, you must delete budget elements!')
-    );
-  } else if (user.categories.length > 0) {
-    return next(
-      new HttpError('Before you delete user, you must delete categories!')
-    );
-  } else if (user.wallets.length > 0) {
-    return next(
-      new HttpError('Before you delete user, you must delete wallets!')
-    );
-  }
-
   try {
     const session = await mongoose.startSession();
     session.startTransaction();
     await user.remove({ session: session });
+    await BudgetElement.deleteMany({ user: userId }, { session: session });
+    await Wallet.deleteMany({ user: userId }, { session: session });
+    await Category.deleteMany({ user: userId }, { session: session });
     await session.commitTransaction();
   } catch (err) {
     return next(
-      new HttpError(`Something went wrong, please try deletee user again.`, 500)
+      new HttpError(
+        `Something wentt wrong, please try deletee user again.`,
+        500
+      )
     );
   }
 
