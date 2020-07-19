@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const HttpError = require('../models/http-error');
 const Wallet = require('../models/wallet');
+const BudgetElement = require('../models/budget-element');
 const User = require('../models/user');
 
 const getWalletById = async (req, res, next) => {
@@ -158,18 +159,11 @@ const deleteWallet = async (req, res, next) => {
     );
   }
 
-  if (wallet.budgetElements.length > 0) {
-    return next(
-      new HttpError(
-        'Before you delete wallet, you must delete budget elements!'
-      )
-    );
-  }
-
   try {
     const session = await mongoose.startSession();
     session.startTransaction();
     await wallet.remove({ session: session });
+    await BudgetElement.deleteMany({ wallet: walletId }, { session: session });
     wallet.user.wallets.pull(wallet);
     await wallet.user.save({ session: session });
     await session.commitTransaction();

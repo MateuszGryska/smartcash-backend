@@ -185,18 +185,14 @@ const deleteCategory = async (req, res, next) => {
     );
   }
 
-  if (category.budgetElements.length > 0) {
-    return next(
-      new HttpError(
-        'Before you delete category, you must delete budget elements!'
-      )
-    );
-  }
-
   try {
     const session = await mongoose.startSession();
     session.startTransaction();
     await category.remove({ session: session });
+    await BudgetElement.deleteMany(
+      { category: categoryId },
+      { session: session }
+    );
     category.user.categories.pull(category);
     await category.user.save({ session: session });
     await session.commitTransaction();
