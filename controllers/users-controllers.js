@@ -277,14 +277,75 @@ const deleteUser = async (req, res, next) => {
     await session.commitTransaction();
   } catch (err) {
     return next(
-      new HttpError(
-        `Something wentt wrong, please try deletee user again.`,
-        500
-      )
+      new HttpError(`Something went wrong, please try deletee user again.`, 500)
     );
   }
 
   res.status(200).json({ message: 'Deleted user!' });
+};
+
+//update password
+// compare bcrypt it's same password
+// update password
+const updatePassword = async (req, res, next) => {
+  const { password } = req.body;
+  const userId = req.params.uid;
+
+  let existingUser;
+  try {
+    existingUser = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      'Update password failed, please try again later.',
+      500
+    );
+    return next(error);
+  }
+
+  if (!existingUser) {
+    return next(
+      new HttpError('Something went wrong, could not update password!', 403)
+    );
+  }
+
+  let isValidPassword = false;
+  try {
+    isValidPassword = await bcrypt.compare(password, existingUser.password);
+  } catch (err) {
+    return next(
+      new HttpError('Something went wrong, could not update password.', 500)
+    );
+  }
+
+  console.log('password', password);
+  console.log('valid', isValidPassword);
+
+  if (isValidPassword) {
+    return next(new HttpError('This is the same password.', 403));
+  }
+
+  let hashedPassword;
+  try {
+    hashedPassword = await bcrypt.hash(password, 12);
+  } catch (err) {
+    return next(
+      new HttpError('Could not update password, please try again.', 422)
+    );
+  }
+
+  existingUser.password = hashedPassword;
+
+  try {
+    await existingUser.save();
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+
+  res.status(200).json({ users: existingUser.toObject({ getters: true }) });
 };
 
 exports.getUsers = getUsers;
@@ -294,3 +355,4 @@ exports.signUp = signUp;
 exports.updateUserAvatar = updateUserAvatar;
 exports.updateUserData = updateUserData;
 exports.deleteUser = deleteUser;
+exports.updatePassword = updatePassword;
