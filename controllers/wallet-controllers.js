@@ -109,7 +109,7 @@ const updateWallet = async (req, res, next) => {
     throw new HttpError('Invalid input passed, please check your data', 422);
   }
 
-  const { name } = req.body;
+  const { name, sum } = req.body;
   const walletId = req.params.wid;
 
   let wallet;
@@ -122,7 +122,7 @@ const updateWallet = async (req, res, next) => {
     );
     return next(error);
   }
-
+  wallet.sum = sum;
   wallet.name = name;
   wallet.date = Date.now();
 
