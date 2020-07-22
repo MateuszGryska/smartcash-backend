@@ -284,9 +284,6 @@ const deleteUser = async (req, res, next) => {
   res.status(200).json({ message: 'Deleted user!' });
 };
 
-//update password
-// compare bcrypt it's same password
-// update password
 const updatePassword = async (req, res, next) => {
   const { password } = req.body;
   const userId = req.params.uid;
@@ -316,9 +313,6 @@ const updatePassword = async (req, res, next) => {
       new HttpError('Something went wrong, could not update password.', 500)
     );
   }
-
-  console.log('password', password);
-  console.log('valid', isValidPassword);
 
   if (isValidPassword) {
     return next(new HttpError('This is the same password.', 403));

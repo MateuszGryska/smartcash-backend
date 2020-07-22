@@ -65,11 +65,15 @@ const getCategoriesByUserId = async (req, res, next) => {
   //update category sum value
   categories.forEach((category) => {
     if (category.budgetElements.length > 0) {
-      const catId = category._id.toString();
-      const categoryToUpdate = filteredCategories.find((cur) => {
-        return cur._id == catId;
-      });
-      category.sum = categoryToUpdate.total;
+      try {
+        const catId = category._id.toString();
+        const categoryToUpdate = filteredCategories.find((cur) => {
+          return cur._id == catId;
+        });
+        category.sum = categoryToUpdate.total;
+      } catch (err) {
+        console.log(err);
+      }
     }
     return;
   });
