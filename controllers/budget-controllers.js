@@ -107,6 +107,14 @@ const createBudgetElement = async (req, res, next) => {
 
   categoryId.date = Date.now();
 
+  // update wallet sum
+  if (createdBudgetElement.type === 'income') {
+    walletId.sum += createdBudgetElement.amount;
+  } else if (createdBudgetElement.type === 'expense') {
+    walletId.sum -= createdBudgetElement.amount;
+  }
+  walletId.date = Date.now();
+
   try {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -194,6 +202,14 @@ const deleteBudgetElement = async (req, res, next) => {
       new HttpError('Something went wrong, could not delete budget element!')
     );
   }
+
+  // update wallet sum
+  if (budgetElement.type === 'income') {
+    budgetElement.wallet.sum -= budgetElement.amount;
+  } else if (budgetElement.type === 'expense') {
+    budgetElement.wallet.sum += budgetElement.amount;
+  }
+  budgetElement.wallet.date = Date.now();
 
   try {
     const session = await mongoose.startSession();

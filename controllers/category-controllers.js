@@ -72,7 +72,7 @@ const getCategoriesByUserId = async (req, res, next) => {
         });
         category.sum = categoryToUpdate.total;
       } catch (err) {
-        console.log(err);
+        console.log('total is zero');
       }
     }
     return;
