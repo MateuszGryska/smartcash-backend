@@ -2,12 +2,24 @@ const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
+const sgMail = require('@sendgrid/mail');
 
 const HttpError = require('../models/http-error');
 const User = require('../models/user');
 const Category = require('../models/category');
 const BudgetElement = require('../models/budget-element');
 const Wallet = require('../models/wallet');
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// const transporter = nodemailer.createTransport(
+//   sendgridTransport({
+//     auth: {
+//       api_key: process.env.SENDGRID_API_KEY,
+//     },
+//   })
+// );
 
 const getUsers = async (req, res, next) => {
   let users;
@@ -342,6 +354,129 @@ const updatePassword = async (req, res, next) => {
   res.status(200).json({ users: existingUser.toObject({ getters: true }) });
 };
 
+const resetPassword = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new HttpError('Invalid input passed, please check your data', 422);
+  }
+  let resetToken;
+  crypto.randomBytes(32, (err, buffer) => {
+    if (err) {
+      console.log(err);
+    }
+    resetToken = buffer.toString('hex');
+  });
+
+  const { email } = req.body;
+
+  let existingUser;
+  try {
+    existingUser = await User.findOne({ email: email });
+  } catch (err) {
+    const error = new HttpError(
+      'Reset password failed, please try again later.',
+      500
+    );
+    return next(error);
+  }
+
+  if (!existingUser) {
+    const error = new HttpError(
+      'User don&#39;t exists, please sign up or try again instead.',
+      422
+    );
+    return next(error);
+  }
+
+  existingUser.resetToken = resetToken;
+  existingUser.expireToken = Date.now() + 3600000;
+
+  try {
+    await existingUser.save();
+    const msg = {
+      to: existingUser.email,
+      from: 'matthew.gryska@gmail.com',
+      subject: 'reset password request',
+      html: `
+        <h1>Hi ${existingUser.firstName}</h1>
+        <p>Click in this <a href="http://localhost:3000/reset/${resetToken}">link</a> to reset password.</p>
+      `,
+    };
+    sgMail.send(msg);
+  } catch (err) {
+    const error = new HttpError(
+      `'Something went wrong, please try update again. ${err}'`,
+      500
+    );
+    return next(error);
+  }
+
+  res.json({ message: 'You can check your email!' });
+};
+
+const setNewPassword = async (req, res, next) => {
+  const { password, resetToken } = req.body;
+
+  let user;
+  try {
+    user = await User.findOne({
+      resetToken: resetToken,
+      expireToken: { $gt: Date.now() },
+    });
+  } catch (err) {
+    const error = new HttpError(
+      'Update password failed, please try again later.',
+      500
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    return next(
+      new HttpError('Something went wrong, could not update password!', 403)
+    );
+  }
+
+  let isValidPassword = false;
+  try {
+    isValidPassword = await bcrypt.compare(password, user.password);
+  } catch (err) {
+    console.log(err);
+    return next(
+      new HttpError('Something went wrong, could not update password.', 500)
+    );
+  }
+
+  if (isValidPassword) {
+    return next(new HttpError('This is the same password.', 403));
+  }
+
+  let hashedPassword;
+  try {
+    hashedPassword = await bcrypt.hash(password, 12);
+  } catch (err) {
+    return next(
+      new HttpError('Could not update password, please try again.', 422)
+    );
+  }
+
+  user.password = hashedPassword;
+  user.resetToken = undefined;
+  user.expireToken = undefined;
+
+  try {
+    await user.save();
+  } catch (err) {
+    const error = new HttpError(
+      'Something went wrong, please try update again.',
+      500
+    );
+    return next(error);
+  }
+
+  res.status(200).json({ message: 'Password was updated!' });
+};
+
 exports.getUsers = getUsers;
 exports.getUserById = getUserById;
 exports.login = login;
@@ -350,3 +485,5 @@ exports.updateUserAvatar = updateUserAvatar;
 exports.updateUserData = updateUserData;
 exports.deleteUser = deleteUser;
 exports.updatePassword = updatePassword;
+exports.resetPassword = resetPassword;
+exports.setNewPassword = setNewPassword;

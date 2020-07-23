@@ -17,6 +17,8 @@ const userSchema = new Schema({
   ],
   wallets: [{ type: mongoose.Types.ObjectId, required: true, ref: 'Wallet' }],
   image: { type: String },
+  resetToken: { type: String },
+  expireToken: { type: Date },
 });
 
 userSchema.plugin(uniqueValidator);
