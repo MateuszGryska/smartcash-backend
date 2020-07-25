@@ -13,14 +13,6 @@ const Wallet = require('../models/wallet');
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// const transporter = nodemailer.createTransport(
-//   sendgridTransport({
-//     auth: {
-//       api_key: process.env.SENDGRID_API_KEY,
-//     },
-//   })
-// );
-
 const getUsers = async (req, res, next) => {
   let users;
   try {
@@ -399,7 +391,7 @@ const resetPassword = async (req, res, next) => {
       subject: 'reset password request',
       html: `
         <h1>Hi ${existingUser.firstName}</h1>
-        <p>Click in this <a href="http://localhost:3000/reset/${resetToken}">link</a> to reset password.</p>
+        <p>Click in this <a href="${process.env.FRONTEND_URL}reset/${resetToken}">link</a> to reset password.</p>
       `,
     };
     sgMail.send(msg);
