@@ -1,2 +1,8 @@
+<<<<<<< HEAD
 node_modules
 nodemon.json
+=======
+nodemon.json
+uploads
+node_modules
+>>>>>>> 57ccade1f787390a8c19ef98812def35684c90fa
