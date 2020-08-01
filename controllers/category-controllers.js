@@ -65,11 +65,20 @@ const getCategoriesByUserId = async (req, res, next) => {
   //update category sum value
   categories.forEach((category) => {
     if (category.budgetElements.length > 0) {
-      const catId = category._id.toString();
-      const categoryToUpdate = filteredCategories.find((cur) => {
-        return cur._id == catId;
-      });
-      category.sum = categoryToUpdate.total;
+      try {
+        const catId = category._id.toString();
+        const categoryToUpdate = filteredCategories.find((cur) => {
+          return cur._id == catId;
+        });
+        category.sum = categoryToUpdate.total;
+      } catch (err) {
+        return next(
+          new HttpError(
+            'Something went wrong, could not find a categories by user.',
+            500
+          )
+        );
+      }
     }
     return;
   });
@@ -185,18 +194,14 @@ const deleteCategory = async (req, res, next) => {
     );
   }
 
-  if (category.budgetElements.length > 0) {
-    return next(
-      new HttpError(
-        'Before you delete category, you must delete budget elements!'
-      )
-    );
-  }
-
   try {
     const session = await mongoose.startSession();
     session.startTransaction();
     await category.remove({ session: session });
+    await BudgetElement.deleteMany(
+      { category: categoryId },
+      { session: session }
+    );
     category.user.categories.pull(category);
     await category.user.save({ session: session });
     await session.commitTransaction();

@@ -15,13 +15,21 @@ router.post(
   [
     check('firstName').not().isEmpty(),
     check('lastName').not().isEmpty(),
-    check('email').normalizeEmail().isEmail(),
+    check('email').isEmail(),
     check('password').isLength({ min: 6 }),
   ],
   usersControllers.signUp
 );
 
 router.post('/login', usersControllers.login);
+
+router.post(
+  '/reset-password',
+  [check('email').isEmail()],
+  usersControllers.resetPassword
+);
+
+router.post('/new-password', usersControllers.setNewPassword);
 
 router.patch('/:uid', usersControllers.updateUserData);
 
@@ -30,5 +38,9 @@ router.patch(
   fileUpload.single('image'),
   usersControllers.updateUserAvatar
 );
+
+router.patch('/password/:uid', usersControllers.updatePassword);
+
+router.delete('/:uid', usersControllers.deleteUser);
 
 module.exports = router;
